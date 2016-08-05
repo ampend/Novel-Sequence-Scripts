@@ -85,11 +85,8 @@ def writingMaskedFasta(seqs):
 	finalFile.write(Nstring.join(seqs))
 ###############################################################################
 def makeGapDict(gapList):
-	#gapfile = '/home/ampend/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/canFam3_gaps.bed'
-	#HARD CODED
-	#This gap file contains the gaps of all chromosomes and then for the merged chrUn
-	gapfile = '/home/ampend/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/canFam3.1.withUnk.gaps.bed'
-	gapFile = open(gapfile, 'r')
+	#HARD CODED: This gap file contains the gaps of all chromosomes and then for the merged chrUn
+	gapFile = open('/home/ampend/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/canFam3.1.withUnk.gaps.bed','r')
 	
 	for line in gapFile:
 		line = line.rstrip()
@@ -112,7 +109,7 @@ def findGapOverlap(queryID, sStart, sEnd, chromNum, gapList, dict):
 		longChr = 'chrUn'
 	else:
 		longChr = 'chr' + chromNum
-	
+	sStart = sStart - 1
 	StartIDX = 0 #Setting start to 0 
 	EndIDX = len(gapList[longChr]) - 1 #Setting end index length-1
 	MidIDX = 0
@@ -123,22 +120,20 @@ def findGapOverlap(queryID, sStart, sEnd, chromNum, gapList, dict):
 		MidIDX = int(EndIDX + StartIDX) / 2
 		start_mid = int(gapList[longChr][MidIDX][0])
 		end_mid = int(gapList[longChr][MidIDX][1])
-		#THOSE ARE NARROWING SEARCH FOR GAPS
+		#2 LOOPS BELOW ARE NARROWING SEARCH FOR GAPS
 		if sEnd < start_mid:
 			EndIDX = int(MidIDX)
-			#print '%s\t%s\t%s\t%s\t%s' % (queryID,longChr,StartIDX,EndIDX,MidIDX)
 			if EndIDX - StartIDX <= 1: #no gap overlap possible
 				break
 			else:
 				continue
 		if sStart > end_mid:
 			StartIDX = int(MidIDX)
-			#print '%s\t%s\t%s\t%s\t%s' % (queryID,longChr,StartIDX,EndIDX,MidIDX)
 			if EndIDX - StartIDX <= 1: #no gap overlap possible
 				break
 			else:
 				continue
-		#THOSE BELOW ARE OVERLAPPING WITH GAPS
+		#LOOPS BELOW ARE OVERLAPPING WITH GAPS
 		if sStart < start_mid and sEnd > end_mid:
 			dict[queryID][18] = True
 			gapPresent = True
@@ -156,6 +151,7 @@ def findGapOverlap(queryID, sStart, sEnd, chromNum, gapList, dict):
 			break			
 		#This means there's an overlap if all conditions fail
 		if EndIDX - StartIDX <= 1:
+			gapPresent = False
 			#no gap overlap possible
 			break
 	return dict[queryID][18], gapPresent
@@ -368,36 +364,26 @@ for lineFull in inFile:
 			continue
 	if queryID not in hits:
 		continue #breaks loop if it didn't meet the first requirement
-		
 			
 	#BLAT results
 	perID = float(line[2])
 	alnLength = int(line[3])
 	qStart = line[6]
 	qEnd = line[7]
-	sStart = int(line[8])
-	sEnd = int(line[9])
+	
+	#Determining hit start/end
+	if int(line[8]) > int(line[9]): #If BLAT results are in (-) orientation:
+		sStart = int(line[9])
+		sEnd = int(line[8])
+	else:
+		sStart = int(line[8])
+		sEnd = int(line[9])
 	
 	#Defining maximum alignment length
 	maxHit = 0.8 * qLength #max allowed hit is > 80% of query hit
 
 	#########################################	
 	#Processing THIS hit
-	"""if dict[queryID][8] is False: #Stop looking for more hits if there already is a top hit
-		continue
-	else:
-		if perID > 80.0:
-			if alnLength > maxHit:
-				dict[queryID][8] = False
-				dict[queryID][9] = subID
-				dict[queryID][10] = perID
-				dict[queryID][11] = sStart
-				dict[queryID][12] = sEnd
-				dict[queryID][13] = alnLength
-				dict[queryID][15] = alnLength - qLength
-				dict[queryID][1] = False #Therefore fails overall to be used
-				if chromNum not in hits[queryID].keys():
-	"""
 	if dict[queryID][8] is True:
 		if dict[queryID][10] < 1: #Checking to make sure that only the top hit goes into the outFile, default for dict[10] = 0
 			dict[queryID][9] = subID
@@ -413,15 +399,11 @@ for lineFull in inFile:
 			prevHitqStart = qStart
 			prevHitqEnd = qEnd
 			if chromNum not in hits[queryID].keys():
-				#print '\nQueryID', queryID
-				#print 'perID', perID
-				#if perID > 80.0:
-				#	hits[queryID][chromNum]=[]
-				#	print hits[queryID]
 				hits[queryID][chromNum]=[]
-				#print hits[queryID]
 			else:
 				continue
+		
+		#Processing whether or not the novel contig aligns to canFam3 where a gap is present
 		if chromNum in hits[queryID].keys():
 			if 'M' not in chromNum: #chrM does not have gaps
 				temp = findGapOverlap(queryID, sStart, sEnd, chromNum, gapList, dict)
@@ -429,16 +411,7 @@ for lineFull in inFile:
 				if gapPresent is True:
 					dict[queryID][19] += 1
 					gapCount += 1
-			#print 'Gap Dict Present: %s\n' % (dict[queryID][18])
-			#print 'Gap Variable Present: %s\nTotal Gaps: %i' % (gapPresent, gapCount)
 
-	#########################################
-	#if 'wolf-scaffold-1963' in queryID:
-	#	if queryID in hits:
-	#		print 'yes!!'
-	#	else:
-	#		continue
-	#########################################
 	#Comparing THIS hit to PREVIOUS hit
 	if queryID in hitList: #Has this hit been processed already?
 		if prevHitChrom == subID: #If chromosomes are ok, keep going
@@ -455,8 +428,9 @@ for lineFull in inFile:
 	if (count % LOG_EVERY_N) == 0:
 		print 'Processed canFam hits #:',count
 
-	#if count > 10000:
-		#break
+	#if count > 50:
+	#	break
+		
 #############################################################
 #Reminder of dictionary structure:
 		#0=ID, 1=AllPass (default = True), 
@@ -502,10 +476,6 @@ for key in dict.keys():
 			#dict[key][16]  = propUnaligned 
 			propAligned = float(alignedTotal)/contigLength
 			dict[key][16] = propAligned
-			#print 'aligned total:', alignedTotal
-			#print 'contig length: ', contigLength
-			#print 'unaligned total: ', unalignedTotal
-			#print 'prop unaligned: ', propUnaligned
 			
 			gappresent = dict[key][18]
 			if gappresent is False: #If gaps present = False
@@ -519,7 +489,7 @@ for key in dict.keys():
 		#Now choosing between the two scaffolds that hit to one another, choosing the contig that's longest
 		if dict[key][2] is False: #If contig fails self BLAT against unmasked contigs
 			contigHitID = dict[key][3] #ContigID of hit
-			print 'contig: %s\thitID: %s' % (key, contigHitID)
+			#print 'contig: %s\thitID: %s' % (key, contigHitID)
 			if contigHitID in hits:
 				if dict[contigHitID][8] is False and dict[key][8] is True:
 					dict[key][1] = True
@@ -546,6 +516,9 @@ for key in dict.keys():
 			dict[key][8] = False
 			if gappresent is not True:
 				dict[key][1] = False
+			if gappresent is True:
+				dict[key][1] = True
+				#print key, perID
 	else:
 		continue
 	
