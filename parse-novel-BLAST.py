@@ -1,9 +1,10 @@
-# 3parse-novel-BLAST.py
+# parse-novel-BLAST.py
 # Parses BLAT outputs of the novel contigs against
 #	themselves and canFam3.1+chrUn
 
 import operator
 import sys
+import genutils
 
 ###############################################################################
 #Example Output:
@@ -93,8 +94,8 @@ def makeGapDict(gapList):
 		line = line.split()
 		
 		chromGap = line[0]
-		startGap = line[1]
-		endGap = line[2]
+		startGap = int(line[1])
+		endGap = int(line[2])
 		
 		if chromGap not in gapList:
 			gapList[chromGap] = []
@@ -109,7 +110,7 @@ def findGapOverlap(queryID, sStart, sEnd, chromNum, gapList, dict):
 		longChr = 'chrUn'
 	else:
 		longChr = 'chr' + chromNum
-	sStart = sStart - 1
+
 	StartIDX = 0 #Setting start to 0 
 	EndIDX = len(gapList[longChr]) - 1 #Setting end index length-1
 	MidIDX = 0
@@ -120,20 +121,22 @@ def findGapOverlap(queryID, sStart, sEnd, chromNum, gapList, dict):
 		MidIDX = int(EndIDX + StartIDX) / 2
 		start_mid = int(gapList[longChr][MidIDX][0])
 		end_mid = int(gapList[longChr][MidIDX][1])
-		#2 LOOPS BELOW ARE NARROWING SEARCH FOR GAPS
+		#THOSE ARE NARROWING SEARCH FOR GAPS
 		if sEnd < start_mid:
 			EndIDX = int(MidIDX)
+			#print '%s\t%s\t%s\t%s\t%s' % (queryID,longChr,StartIDX,EndIDX,MidIDX)
 			if EndIDX - StartIDX <= 1: #no gap overlap possible
 				break
 			else:
 				continue
 		if sStart > end_mid:
 			StartIDX = int(MidIDX)
+			#print '%s\t%s\t%s\t%s\t%s' % (queryID,longChr,StartIDX,EndIDX,MidIDX)
 			if EndIDX - StartIDX <= 1: #no gap overlap possible
 				break
 			else:
 				continue
-		#LOOPS BELOW ARE OVERLAPPING WITH GAPS
+		#THOSE BELOW ARE OVERLAPPING WITH GAPS
 		if sStart < start_mid and sEnd > end_mid:
 			dict[queryID][18] = True
 			gapPresent = True
@@ -151,13 +154,68 @@ def findGapOverlap(queryID, sStart, sEnd, chromNum, gapList, dict):
 			break			
 		#This means there's an overlap if all conditions fail
 		if EndIDX - StartIDX <= 1:
-			gapPresent = False
 			#no gap overlap possible
 			break
 	return dict[queryID][18], gapPresent
+	
+"""#SAVING OLD ROUTINE
+def findGapOverlap(queryID, sStart, sEnd, chromNum, gapList, dict):
+	#Add chr to chromosome Number for processing gaps
+	if chromNum == 'Un':
+		longChr = 'chrUn'
+	else:
+		longChr = 'chr' + chromNum
+	
+	StartIDX = 0 #Setting start to 0 
+	EndIDX = len(gapList[longChr]) - 1 #Setting end index length-1
+	MidIDX = 0
+	gapPresent = False
+	#print '%s\t%s\t%s\t%s\t%s' % (queryID,longChr,StartIDX,EndIDX,MidIDX)
+
+	while True:  	
+		MidIDX = int(EndIDX + StartIDX) / 2
+		start_mid = int(gapList[longChr][MidIDX][0])
+		end_mid = int(gapList[longChr][MidIDX][1])
+		#THOSE ARE NARROWING SEARCH FOR GAPS
+		if sEnd < start_mid:
+			EndIDX = int(MidIDX)
+			#print '%s\t%s\t%s\t%s\t%s' % (queryID,longChr,StartIDX,EndIDX,MidIDX)
+			if EndIDX - StartIDX <= 1: #no gap overlap possible
+				break
+			else:
+				continue
+		if sStart > end_mid:
+			StartIDX = int(MidIDX)
+			#print '%s\t%s\t%s\t%s\t%s' % (queryID,longChr,StartIDX,EndIDX,MidIDX)
+			if EndIDX - StartIDX <= 1: #no gap overlap possible
+				break
+			else:
+				continue
+		#THOSE BELOW ARE OVERLAPPING WITH GAPS
+		if sStart < start_mid and sEnd > end_mid:
+			dict[queryID][18] = True
+			gapPresent = True
+			#print '%s\t%s\t%s\t%s\t%s' % (queryID,chr,StartIDX,EndIDX,MidIDX)
+			break
+		if sStart == start_mid or sStart == end_mid:
+			dict[queryID][18] = True
+			gapPresent = True
+			#print '%s\t%s\t%s\t%s\t%s' % (queryID,chr,StartIDX,EndIDX,MidIDX)
+			break
+		if sEnd == start_mid or sEnd == end_mid:
+			dict[queryID][18] = True
+			gapPresent = True
+			#print '%s\t%s\t%s\t%s\t%s' % (queryID,chr,StartIDX,EndIDX,MidIDX)
+			break			
+		#This means there's an overlap if all conditions fail
+		if EndIDX - StartIDX <= 1:
+			#no gap overlap possible
+			break
+	return dict[queryID][18], gapPresent"""
+###############################################################################
 ###############################################################################
 #Generating output file that totals all the results per contig
-outfile = '/home/jmkidd/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/results/3BLATResultsTable_AllContigs.txt'
+outfile = '/home/jmkidd/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/results/BLATResultsTable_AllContigs.txt'
 outFile = open(outfile, 'w')
 
 ###############################################################################
@@ -208,35 +266,26 @@ for lineFull in inFile:
 		dict[queryID] = [queryID,True,True,0,0,True,0,0,True,0,0,0,0,0,True,0,0,0,False,0]
 		dict[queryID][17] = qLength
 
-	if queryID == subID: #if query and subject IDs match, then it's a self-self hit --> ignore
-		dict[queryID][2] = True
-		continue
-
 	#BLAT results		
 	perID = float(line[2])
 	alnLength = int(line[3])
+	propAligned = float(alnLength)/qLength
 	
 	maxHit = 0.8 * qLength #max allowed hit is > 80% of query hit
 	
-	if perID > 75.0: #If it hits with >75% identity
-		if alnLength > maxHit: #If the alignment length is >80% of total length
-			if dict[queryID][2] is False: #It's already false, and top hit should have already been added
-				continue
-			else:
-				dict[queryID][2] = False #This contig FAILS BLAT against unmasked novel contigs
-				dict[queryID][3] = subID #Hit ID added
-				dict[queryID][4] = perID #Percent identity added
-				dict[queryID][1] = False #Therefore FAILS OVERALL to be used
-	else:
-		if dict[queryID][2] is False:
-			continue
+	if queryID != subID and dict[queryID][2] is True:
+		if perID > 75.0 and alnLength > maxHit: #If it hits with >75% identity AND the alignment length is >80% of total length
+			dict[queryID][2] = False #This contig FAILS BLAT against unmasked novel contigs
+			dict[queryID][3] = subID #Hit ID added
+			dict[queryID][4] = propAligned #Proportion of contig aligned with percent ID > 75%
+			dict[queryID][1] = False #Therefore FAILS OVERALL to be used
 		else:
 			dict[queryID][2] = True #Passes, but below info will still be added
 			dict[queryID][3] = subID #Hit ID added
-			dict[queryID][4] = perID #Percent identity added
+			if perID > 75.0:
+				dict[queryID][4] = propAligned #Proportion of contig aligned with percent ID > 75%
 
 print 'Done processing novel v unmasked...\n'
-
 
 ###############################################################################
 #Parsing unmasked novel v masked novel BLAT results:
@@ -247,13 +296,11 @@ infile = '/home/jmkidd/kidd-lab/ampend-projects/Novel_Sequence_Analysis/Redundan
 inFile = open(infile, 'r')
 
 print 'Processing novel v masked...\n'
-
 count = 1 
 
 for lineFull in inFile:
 	line = lineFull.rstrip()
 	line = line.split()
-	
 	if '#' in line: #skipping headers
 		continue 
 
@@ -265,33 +312,25 @@ for lineFull in inFile:
 
 	count += 1
 
-	if queryID == subID: #if self-self hit, ignore
-		dict[queryID][5] = True
-		continue
-			
 	#BLAT results
 	perID = float(line[2])
 	alnLength = int(line[3])
-
+	propAligned = float(alnLength)/qLength
+		
 	maxHit = 0.8 * qLength #max allowed hit is > 80% of query hit
-	
-	if perID > 75.0:
-		if alnLength > maxHit:
-			if dict[queryID][5] is False: #If already false, top hit already added, should continue
-				continue
-			else:
-				dict[queryID][5] = False #Fails BLAT against masked contigs
-				dict[queryID][6] = subID
-				dict[queryID][7] = perID
-				dict[queryID][1] = False #Therefore FAILS OVERALL to be used
-	else:
-		if dict[queryID][5] is False: #If already false, top hit already added, should continue
-			continue
+
+	if queryID != subID and dict[queryID][5] is True:
+		if perID > 75.0 and alnLength > maxHit: #If it hits with >75% identity AND the alignment length is >80% of total length
+			dict[queryID][5] = False #This contig FAILS BLAT against unmasked novel contigs
+			dict[queryID][6] = subID #Hit ID added
+			dict[queryID][7] = propAligned #Proportion of contig aligned with percent ID > 75%
+			dict[queryID][1] = False #Therefore FAILS OVERALL to be used
 		else:
-			dict[queryID][5] = True #Contig passes, but below info should still be added
-			dict[queryID][6] = subID 
-			dict[queryID][7] = perID
-	
+			dict[queryID][5] = True #Passes, but below info will still be added
+			dict[queryID][6] = subID #Hit ID added
+			if perID > 75.0:
+				dict[queryID][7] = propAligned #Proportion of contig aligned with percent ID > 75%
+
 	if (count % LOG_EVERY_N) == 0:
 		print 'Processed novel v masked hits #:',count
 print 'Done processing novel v masked...\n'
@@ -444,25 +483,24 @@ for lineFull in inFile:
 
 print '\nMerging coordinates...' 
 
-for key in dict.keys():
-	if key in hits: #alignment to genome dictionary 
-		#print key #printing contigID or queryID
-		#print hits[key] #prints empty list per contig
-
+for key in dict.keys(): #for contig (queryID) in dictionary
+	if key in hits: #for contig (queryID) in hits (only those that hit to canFam significantly)
 		#Merging the coordinates per novel contig to calculate total length aligned to canFam3
 		for chr in hits[key].keys(): #because we have chromosome as key for hits[queryID]
-			hits[key][chr] = [(int(x), int(y)) for x, y in hits[key][chr]]
-			hits[key][chr].sort(key=operator.itemgetter(0))
-			new_list = [hits[key][chr][0]]
+			hits[key][chr] = [(int(x), int(y)) for x, y in hits[key][chr]] #saves the coordinates x= start, y=end of BLAT alignments
+			hits[key][chr].sort(key=operator.itemgetter(0)) #This sorts the coordinates added
+			new_list = [hits[key][chr][0]] #have to create new list for next steps
 
-			for start, end in hits[key][chr][1:]:
+			for start, end in hits[key][chr][1:]: #for x, y (start, end) in coordinates per contig
 				last_start, last_end = new_list[-1]
 				if start > last_end: #if the start comes after the previous end, then append the pair of coordinates to the new list
 					new_list.append((start, end))
 				else: #if not, then the coordinate pair is now (last_start, and the maximum of last_end and end)
 					new_list[-1] = last_start, max(last_end, end)
+			
 			#print(hits[key][chr]) #--> old, without merging of overlapping coordinates
 			#print(new_list) #--> new list, with merging of overlapping coordinates
+			
 			#Writing all left and right coordinates to a list, per contig
 			left=[m[0] for m in new_list]
 			right=[m[1] for m in new_list]
@@ -471,21 +509,22 @@ for key in dict.keys():
 			contigLength = int(dict[key][17])
 			unalignedTotal = contigLength - alignedTotal
 			dict[key][15]  = unalignedTotal
-			#Calculating proportion of contig that does NOT align to CanFam3+chrUn
-			propUnaligned = float(unalignedTotal)/contigLength
-			#dict[key][16]  = propUnaligned 
-			propAligned = float(alignedTotal)/contigLength
-			dict[key][16] = propAligned
 			
-			gappresent = dict[key][18]
+			#Calculating proportion of contig that aligns to CanFam3+chrUn
+			propAligned = float(alignedTotal)/contigLength
+			dict[key][16] = propAligned #Saving propAligned to dictionary in index #16
+			
+			#NEW SECTION
+			#GAPS
+			gappresent = dict[key][18] #gappresent can be true or false, default = false
 			if gappresent is False: #If gaps present = False
 				if propAligned > .8: #If greater than 75% of the contig is unaligned to canFam3+chrUn 
 					dict[key][1] = False #Then, it fails to pass and is considered a rendundant contig
-					dict[key][8] = False
+					dict[key][8] = False #Then it also fails canFam3+chrUn BLAT
 			if gappresent is True: #If gaps present = True
-				if dict[key][1] is True: #If this contig passed the other two BLAT conditions
-					dict[key][1] = True #It should be considered as pass for the all conditions regardless of canFam3 pass
-		
+				#if dict[key][1] is True: #If this contig passed the other two BLAT conditions
+				dict[key][1] = True #It should be considered as pass for the all conditions regardless of canFam3 pass
+		"""
 		#Now choosing between the two scaffolds that hit to one another, choosing the contig that's longest
 		if dict[key][2] is False: #If contig fails self BLAT against unmasked contigs
 			contigHitID = dict[key][3] #ContigID of hit
@@ -518,10 +557,115 @@ for key in dict.keys():
 				dict[key][1] = False
 			if gappresent is True:
 				dict[key][1] = True
-				#print key, perID
+		"""
 	else:
 		continue
-	
+#############################################################
+#writing final bedfile	
+bedfile = '/home/ampend/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/results/canFam3_novelcontig_hitsOnly.bed'
+bedFile = open(bedfile, 'w')
+gapsFile = '/home/ampend/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/canFam3.1.withUnk.gaps.bed'
+bedOutfile = '/home/ampend/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/results/Intersect_canFam3Hits_AgainstGaps.txt'
+
+for key in dict.keys():
+	if key in hits: #alignment to genome dictionary 
+		chrom = dict[key][9]
+		start = dict[key][11]
+		bed_Start = start - 2
+		end = dict[key][12]
+		bed_end = end + 2
+		ID = dict[key][0]
+		
+		bedFile.write('%s\t%i\t%i\t%s\n' % (chrom,start,end,ID))
+
+print 'running bedtools window against gaps within 2bp: '		
+cmd = 'bedtools window -w 5 -a %s -b %s > %s' % (bedfile, gapsFile, bedOutfile)
+
+print cmd
+#genutils.runCMD(cmd)
+print 'Done with intersection'
+print 'Results written to: ', bedOutfile
+
+
+#Have to choose be
+for key in dict.keys():
+	gappresent = dict[key][18]
+	if key in hits:
+		#Now choosing between the two scaffolds that hit to one another, choosing the contig that's longest
+		#	or the one that passes the canFam3 blat
+		if dict[key][2] is False: #If contig fails self BLAT against unmasked contigs
+			contigHitID = dict[key][3] #ContigID of hit
+			#print 'contig: %s\thitID: %s' % (key, contigHitID)
+			if contigHitID in hits: #ContighitID=contigA, key = contigB
+				if dict[contigHitID][8] is False and dict[key][8] is True: #if contigA fails canFam3 blat but contigB passes
+					dict[key][1] = True #then contigB passes overall
+					dict[contigHitID][1] = False #then contigA fails overall
+					continue
+				if dict[contigHitID][8] is True and dict[key][8] is False: #if contigA passes canFam3 blat but contigB fails
+					dict[key][1] = False #then contigB fails overall
+					dict[contigHitID][1] = True #then contigA passes overall
+					continue
+				if dict[contigHitID][8] is True and dict[key][8] is True: #if both contigA and contigB pass canFam BLAT
+					if dict[contigHitID][17] > dict[key][17]: #If the contigB is longer than the contigA, keep the longer of the two
+						dict[contigHitID][1] = True #longest passes overall
+						dict[key][1] = False #shortest fails overall
+						continue
+					if dict[key][17] > dict[contigHitID][17]: #If the contigA is longer than the contigB, keep the longer of the two
+						dict[contigHitID][1] = False #shortest fails overall
+						dict[key][1] = True #longest passes overall
+						continue
+				if dict[contigHitID][8] is False and dict[key][8] is False: #if both contigA and contigB fail canFam BLAT
+						if dict[contigHitID][18] is False and dict[key][18] is False: #if both contigA and contigB dont span gaps
+							dict[contigHitID][1] = False #then both fail overall
+							dict[key][1] = False #then both fail overall
+							continue
+				#else:
+				#	dict[key][1] = True
+		if dict[key][5] is False: #If contig fails self BLAT against the masked contigs
+			contigHitID = dict[key][3] #ContigID of hit
+			if contigHitID in hits: #ContighitID=contigA, key = contigB
+				if dict[contigHitID][8] is False and dict[key][8] is True: #if contigA fails canFam3 blat but contigB passes
+					dict[key][1] = True #then contigB passes overall
+					dict[contigHitID][1] = False #then contigA fails overall
+					continue
+				if dict[contigHitID][8] is True and dict[key][8] is False: #if contigA passes canFam3 blat but contigB fails
+					dict[key][1] = False #then contigB fails overall
+					dict[contigHitID][1] = True #then contigA passes overall
+					continue
+				if dict[contigHitID][8] is True and dict[key][8] is True: #if both contigA and contigB pass canFam BLAT
+					if dict[contigHitID][17] > dict[key][17]: #If the contigB is longer than the contigA, keep the longer of the two
+						dict[contigHitID][1] = True #longest passes overall
+						dict[key][1] = False #shortest fails overall
+						continue
+					if dict[key][17] > dict[contigHitID][17]: #If the contigA is longer than the contigB, keep the longer of the two
+						dict[contigHitID][1] = False #shortest fails overall
+						dict[key][1] = True #longest passes overall
+						continue
+				if dict[contigHitID][8] is False and dict[key][8] is False: #if both contigA and contigB fail canFam BLAT
+						if dict[contigHitID][18] is False and dict[key][18] is False: #if both contigA and contigB dont span gaps
+							dict[contigHitID][1] = False #then both fail overall
+							dict[key][1] = False #then both fail overall
+							continue
+		"""if dict[key][1] is True: #If it's already false, then skip because it failed for a different reason
+				contigHitID = dict[key][3] #ContigID of hit
+				if contigHitID in hits:
+					if dict[contigHitID][17] > dict[key][17]: #If the hit is longer than the current contig being analyzed, keep the longer of the two
+						dict[contigHitID][1] = True
+					else:
+						dict[key][1] = True
+			else: 
+				continue
+		"""
+		#Checking percent ID of hit against canFam3+chrUn to determine whether the contig passes overall
+		perID = dict[key][10] #% ID of contig BLAT hit to top canFam3.1+chrUn hit
+		propAligned = dict[key][16] #calculated above, this is the proportion of the novel contig that aligns to canFam3 (sum of all relevant hits to canFam3)
+		if perID > 75.0 and propAligned > 0.8:
+			dict[key][8] = False
+			if gappresent is False:
+				dict[key][1] = False
+	#GAP CHECK
+	if dict[key][18] is True: #if there is a gap being spanned by a contig, it automatically passes overall
+		dict[key][1] = True #turns overall pass to true
 
 #############################################################
 #############################################################
@@ -534,16 +678,15 @@ for key in dict.keys():
 #Column 5 = True if it has no significant hit in novel vs canFam3.1+chrUn
 
 #Writing out header
-outFile.write('ScaffoldID\tPassAll\tPassUnmaskedBLAT\tUMContigHit\tUMContigHitPercentIdentity\t')
-outFile.write('PassMaskedBLAT\tMContigHit\tMContigHitPercentIdentity\t')
-outFile.write('PassCanFamBLAT\tCanFamHitChr\tCanFamHitPercentIdentity\tCanFamHitStart\tCanFamHitEnd\tCanFamAlignmentLength\t')
-outFile.write('CanFamBLATMultipleHits\tTotalNovelContigAlignmentOfMultipleHits\t')
+outFile.write('ScaffoldID\tPassAll\tPassUnmaskedBLAT\tUnmaskedContigHit\tProportionAligningToUnmaskedContigGT75PercentID\t')
+outFile.write('PassMaskedBLAT(T/F)\tMaskedContigHit\tProportionAligningToMaskedContigGT75PercentID\t')
+outFile.write('PassCanFamBLAT(T/F)\tCanFamHitChr\tCanFamHitPercentIdentity\tCanFamHitStart\tCanFamHitEnd\tCanFamAlignmentLength\t')
+outFile.write('CanFamBLATMultipleHits(T/F)\tProportionAlignedToCanFam\tTotalAlignmentOfMultipleHitsToCanFam\t')
 outFile.write('NovelContigLength\t')
-outFile.write('GapPresent\tGapsSpanned\n')
+outFile.write('GapPresent(T/F)\tGapsSpanned\n')
 
 #Writing out results
 for keys in dict.keys():
-	#print "\t".join(map(str,dict[keys]))
 	outFile.write("\t".join(map(str,dict[keys])) + '\n')
 
 #############################################################
