@@ -12,24 +12,20 @@ import sys
 ###############################################################################
 USAGE = """
 python write-final-fasta.py		
-				--directory <Directory to write output files>
-				--infile <Novel Contig FASTA>
+				--infile < Parsed BLAT output file >
 
-directory == Directory to write output files
-infile == Infile that contains the basic probe stats -- UNCORRECTED
-
+infile == In file that contains the parsed novel contig BLAT table
 """
 
+
 parser = OptionParser(USAGE)
-parser.add_option('--infile',dest='infile', help = 'Infile that contains the basic probe stats -- UNCORRECTED')
-parser.add_option('--directory',dest='directory', help = 'Directory to write output files')
+parser.add_option('--infile',dest='infile', help = 'In file that contains the parsed novel contig BLAT table')
 
 (options, args) = parser.parse_args()
 
 if options.infile is None:
-    parser.error('probe stats infile not given')
-if options.directory is None:
-    parser.error('output directory not given')
+    parser.error('Parsed BLAT table in file not given')
+
 ###############################################################################
 ###############################################################################
 def writingUnmaskedFasta(seqs):
@@ -88,12 +84,73 @@ def writingMaskedFasta(seqs):
 	#Writing out
 	finalFile.write(Nstring.join(seqs))
 ###############################################################################
+def writingUnmaskedContigs(seqs):
+	#Writing unmasked chrNovel Fasta file
+	finalfile = '/home/jmkidd/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/Final_chrNovel_Fasta/novelContigs_NonRedundant.fa'
+	finalFile = open(finalfile, 'w')
+
+	ok = 0 
+	
+	#Opening the original unmasked novel contig fasta sequence
+	with open('/home/jmkidd/kidd-lab/ampend-projects/Novel_Sequence_Analysis/NovelSequence/novel.v2.fa') as fasta:
+		prev_seq = []
+		for line in fasta:
+			if line.startswith('>'):
+				line = line.rstrip()
+				line = line.split()	
+				ID = line[0]			
+				shortID = ID.replace('>','')
+				if shortID in passList:
+					finalFile.write('%s\n' % line[0])
+					ok = 1
+				else:
+					ok = 0
+			else:
+				if ok == 1:
+					finalFile.write('%s\n' % line)
+				else:
+					continue
+
+	# This appends the lines after the last ">"
+	#seqs.append("\n".join(prev_seq))
+	#Writing out
+	finalFile.write(Nstring.join(seqs))
+###############################################################################
+def writingMaskedContigs(seqs):
+	#Writing unmasked chrNovel Fasta file
+	finalfile = '/home/jmkidd/kidd-lab/ampend-projects/Novel_Sequence_Analysis/RedundantNovelContigs/Final_chrNovel_Fasta/novelContigs_NonRedundant.fa.masked'
+	finalFile = open(finalfile, 'w')
+
+	ok = 0 
+	
+	#Opening the original unmasked novel contig fasta sequence
+	with open('/home/jmkidd/kidd-lab/ampend-projects/Novel_Sequence_Analysis/NovelSequence/novel.v2.fa.masked') as fasta:
+		prev_seq = []
+		for line in fasta:
+			if line.startswith('>'):
+				line = line.rstrip()
+				line = line.split()	
+				ID = line[0]			
+				shortID = ID.replace('>','')
+				if shortID in passList:
+					finalFile.write('%s\n' % line[0])
+					ok = 1
+				else:
+					ok = 0
+			else:
+				if ok == 1:
+					finalFile.write('%s\n' % line)
+				else:
+					continue
+	#Writing out
+	finalFile.write(Nstring.join(seqs))
+###############################################################################
 infile = options.infile 
 inFile = open(infile, 'r')
 print '\nReading in parsed data from file: ', infile 
 
-outdir = options.directory
-print '\nWriting output files to the directory: ', outdir
+#outdir = options.directory
+#print '\nWriting output files to the directory: ', outdir
 
 
 
@@ -126,17 +183,13 @@ for line in inFile:
 		
 	contigID = line[0]
 	contigPass = line[1]
-	if contigPass is False:
+	if 'False' in contigPass:
 		continue
-	else:
+	if 'True' in contigPass:
 		passList.append(contigID)
 
 print '\nNumber of contigs: ', count
 print '\nNumber of PASS contigs: ', len(passList)
-
-#PARSING UNMASKED CONTIG FASTA
-lineCount = 0
-Nstring = 1000 * 'N'
 
 
 ###############################################################
@@ -158,75 +211,14 @@ print 'Writing unmasked fasta sequence...\n'
 seqs = []
 writingMaskedFasta(seqs)
 
+#Writing unmasked individual contigs
+print 'Wring out unmasked individual contigs...\n'
+seqs = []
+writingUnmaskedContigs(seqs)
+
+#Writing unmasked individual contigs
+print 'Wring out masked individual contigs...\n'
+seqs = []
+writingMaskedContigs(seqs)
 
 print 'DONE!!!!\n\n'
-
-"""for line in fastaFile:
-	line = line.rstrip()
-	line = line.split()
-	lineCount += 1 
-	
-	if '>' in line[0]:
-		if lineCount > 1 and contigID in contigPassList:
-			'\n'.join(str(s) for s in seq)
-			out_unmasked.write('>%s\n%s\n' % (previousID, seq))
-		ID = line[0]
-		ID = ID.split('>') #splits ID from > symbol (i.e. >zoey-scaffold-686 3009)
-		contigID = ID[1]
-		previousID = contigID 
-		seq = [] #clears sequence list
-	else:
-		seq.append(line) #appends sequence to line		
-	
-	if lineCount >1000:
-		break
-"""		
-	
-	
-	
-		
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

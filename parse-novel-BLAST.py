@@ -591,6 +591,9 @@ print 'Results written to: ', bedOutfile
 for key in dict.keys():
 	gappresent = dict[key][18]
 	if key in hits:
+		#GAP CHECK
+		if dict[key][18] is True: #if there is a gap being spanned by a contig, it automatically passes overall
+			dict[key][1] = True #turns overall pass to true
 		#Now choosing between the two scaffolds that hit to one another, choosing the contig that's longest
 		#	or the one that passes the canFam3 blat
 		if dict[key][2] is False: #If contig fails self BLAT against unmasked contigs
@@ -663,9 +666,7 @@ for key in dict.keys():
 			dict[key][8] = False
 			if gappresent is False:
 				dict[key][1] = False
-	#GAP CHECK
-	if dict[key][18] is True: #if there is a gap being spanned by a contig, it automatically passes overall
-		dict[key][1] = True #turns overall pass to true
+
 
 #############################################################
 #############################################################
