@@ -24,10 +24,10 @@ def display_edit_setup(line):
          line = '/pageheight 26 cm def\n'
 
      if '/Helvetica-Bold findfont' in line:
-         line = '/Arial-Bold findfont 9 scalefont setfont\n\n'
+         line = '/Arial-Bold findfont 7 scalefont setfont\n\n'
           
      if '/Helvetica findfont' in line:
-         line = '/Arial findfont 9 scalefont setfont\n'
+         line = '/Arial findfont 7 scalefont setfont\n'
      if '0 pageheight 2 cm sub moveto' in line:
          line = '0 pageheight 1.5 cm sub moveto\n'
      if '/graphicmargin 17.5' in line:
@@ -268,7 +268,7 @@ while True:
 #here, line is the begin of the tagends function
 # here is a good place to print out other info
 
-outFile.write('/Arial-Bold findfont 10 scalefont setfont\n')
+outFile.write('/Arial-Bold findfont 7 scalefont setfont\n')
 #outFile.write('0 pageheight 1.5 cm sub moveto\n')
 #outFile.write('0 pageheight 2.0 cm sub moveto\n')
 
@@ -279,7 +279,7 @@ for t in inTEMP:
 inTEMP.close()
 print 'added the template info!'
 # to put us back...
-outFile.write('/Arial findfont 12 scalefont setfont\n')    
+outFile.write('/Arial findfont 8 scalefont setfont\n')    
 
 #################################################
 bedfile = open('/home/jmkidd/kidd-lab/ampend-projects/fosmids/Processing/miropeats/Total_FosmidcanFamCoordinates.bed', 'r')
@@ -802,6 +802,7 @@ for b in contigFile:
 				n += 1
 				outFile.write('Purple\n')
 				tpos = ypos + 0.015
+				outFile.write('/Arial findfont 7 scalefont setfont\n')
 				outFile.write('%f (%s) printname_right\n' % (tpos, ID))
 				print '%f (%s) printname_right\n' % (ypos, ID)
 				print '%s\t%i\t%i' % (ID, ne, ns)
@@ -820,6 +821,7 @@ for b in contigFile:
 				n += 1		
 				outFile.write('Purple\n')
 				tpos = ypos + 0.015
+				outFile.write('/Arial findfont 7 scalefont setfont\n')
 				outFile.write('%f (%s) printname_right\n' % (tpos, ID))
 				print '%f (%s) printname_right\n' % (ypos, ID)
 				print '%s\t%i\t%i' % (ID, ne, ns)
